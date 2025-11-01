@@ -323,6 +323,40 @@ class MainWindow(QMainWindow):
         )
         
         if file_path:
+            # 若未填写扩展名，则根据选择的类型补全扩展名
+            try:
+                import os
+                _, ext = os.path.splitext(file_path)
+                if not ext:
+                    sel = (selected_filter or "").lower()
+                    if "xlsx" in sel:
+                        file_path += ".xlsx"
+                    elif "csv" in sel:
+                        file_path += ".csv"
+                    elif "json" in sel:
+                        file_path += ".json"
+                else:
+                    # 若扩展名与选择的类型不一致，提示并纠正
+                    sel = (selected_filter or "").lower()
+                    desired_ext = None
+                    if "xlsx" in sel:
+                        desired_ext = ".xlsx"
+                    elif "csv" in sel:
+                        desired_ext = ".csv"
+                    elif "json" in sel:
+                        desired_ext = ".json"
+                    if desired_ext and ext.lower() != desired_ext:
+                        from PyQt5.QtWidgets import QMessageBox
+                        reply = QMessageBox.question(
+                            self,
+                            "文件扩展名不一致",
+                            f"你选择了保存为 {desired_ext}，但文件名以 {ext} 结尾。\n\n是否将文件扩展名更正为 {desired_ext}？",
+                            QMessageBox.Yes | QMessageBox.No
+                        )
+                        if reply == QMessageBox.Yes:
+                            file_path = file_path[: -len(ext)] + desired_ext
+            except Exception:
+                pass
             try:
                 if "xlsx" in selected_filter:
                     self.data_handler.export_to_excel(selected_passwords, file_path)
@@ -356,15 +390,8 @@ class MainWindow(QMainWindow):
             self.show_password = (show_password == '1')
             self.load_categories()
             
-            # 重新创建表格以反映新的列配置
-            old_table = self.table
-            self.create_password_table()
-            
-            # 替换中心部件中的表格
-            layout = self.centralWidget().layout()
-            layout.replaceWidget(old_table, self.table)
-            old_table.deleteLater()
-            
+            # 重新配置现有表格以反映新的列配置
+            self.table_manager.setup_table()
             # 刷新表格数据
             self.refresh_table()
         elif dialog.categories_modified or dialog.custom_fields_modified:
@@ -522,7 +549,7 @@ class MainWindow(QMainWindow):
     def on_import_data(self):
         """导入数据"""
         # 选择文件
-        file_filter = "Excel文件 (*.xlsx *.xls);;CSV文件 (*.csv);;JSON文件 (*.json)"
+        file_filter = "Excel文件 (*.xlsx);;CSV文件 (*.csv);;JSON文件 (*.json)"
         file_path, selected_filter = QFileDialog.getOpenFileName(
             self,
             "导入密码数据",
@@ -534,6 +561,16 @@ class MainWindow(QMainWindow):
             return
         
         try:
+            # 友好提示：用户选择了 .xls 文件
+            import os
+            _, ext = os.path.splitext(file_path)
+            if ext.lower() == '.xls':
+                QMessageBox.warning(
+                    self,
+                    "不支持的Excel格式",
+                    "当前版本不支持 .xls 文件，请将文件另存为 .xlsx (Excel 2007+) 后再试。"
+                )
+                return
             # 导入数据
             if "xlsx" in selected_filter.lower() or "xls" in selected_filter.lower():
                 data = self.data_handler.import_from_excel(file_path)

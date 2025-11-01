@@ -3,6 +3,7 @@
 """
 import json
 import csv
+import os
 import pandas as pd
 from typing import List, Dict, Any, Tuple
 from .models import Password
@@ -145,7 +146,11 @@ class DataHandler:
         data = []
         
         try:
-            # 使用openpyxl引擎读取Excel文件，支持.xlsx和.xls格式
+            # 友好提示：不支持 .xls
+            _, ext = os.path.splitext(file_path)
+            if ext.lower() == '.xls':
+                raise Exception("当前版本不支持 .xls 文件，请将文件另存为 .xlsx 后再试。")
+            # 使用 openpyxl 引擎读取 Excel 文件（.xlsx）
             df = pd.read_excel(file_path, engine='openpyxl')
             
             # 字段映射

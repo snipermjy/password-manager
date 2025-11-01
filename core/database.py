@@ -46,6 +46,11 @@ class Database:
     def get_connection(self) -> sqlite3.Connection:
         """获取数据库连接"""
         conn = sqlite3.connect(self.db_path)
+        # 启用外键约束，确保 ON DELETE CASCADE 等行为生效
+        try:
+            conn.execute('PRAGMA foreign_keys = ON')
+        except Exception:
+            pass
         conn.row_factory = sqlite3.Row  # 使结果可以按列名访问
         return conn
     
